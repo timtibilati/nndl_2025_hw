@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Neural Style Transfer</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background: #f7f9fc; padding: 2rem; font-family: system-ui, sans-serif; }
+    .card { border-radius: 14px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+    #stylePreview { max-width: 200px; border-radius: 8px; display: block; margin-top: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="card p-4 mx-auto" style="max-width:720px;">
+    <h3 class="mb-3 text-center">🎨 Neural Style Transfer</h3>
+    <p class="text-muted text-center mb-4">
+      Upload your photo and choose a famous artist's style.
+    </p>
+
+    <form id="styleForm">
+      <div class="mb-3">
+        <label class="form-label">Upload your image:</label>
+        <input class="form-control" type="file" id="content_image" name="content_image" accept="image/*" required>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Select artist style:</label>
+        <select class="form-select" id="style" name="style">
+          {% for style in styles %}
+            <option value="{{style}}">{{style|capitalize}}</option>
+          {% endfor %}
+        </select>
+        <!-- Изначально показываем превью первого стиля -->
+        <img id="stylePreview" src="{{ url_for('static', filename='models/' + styles|list|first + '.jpg') }}" alt="style preview">
+      </div>
+
+      <button class="btn btn-primary w-100" type="submit">Generate Styled Image</button>
+    </form>
+
+    <div id="progressWrap" class="mt-4" style="display:none;">
+      <label>Progress:</label>
+      <div class="progress">
+        <div id="progressBar" class="progress-bar" role="progressbar" style="width:0%">0%</div>
+      </div>
+    </div>
+
+    <div id="resultWrap" class="mt-4 text-center" style="display:none;">
+      <h5>Result:</h5>
+      <img id="resultImg" src="" class="img-fluid rounded shadow" style="max-width:600px;">
+      <div class="mt-3"><a href="/" class="btn btn-secondary">Start Over</a></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Элемент select и превью
+const styleSelect = document.getElementById('style');
+const stylePreview = document.getElementById('stylePreview');
+
+// Обновляем превью при выборе другого стиля
+styleSelect.addEventListener('change', function() {
+  const selected = this.value;
+  stylePreview.src = `/static/models/${selected}.jpg?` + new Date().getTime();
+});
+
+document.getElementById('styleForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const fileInput = document.getElementById('content_image');
+  if (!fileInput.files || !fileInput.files[0]) {
+    alert('Please select an image file.');
+    return;
+  }
+  const form = new FormData();
+  form.append('content_image', fileInput.files[0]);
+  form.append('style', styleSelect.value);
+
+  const resp = await fetch('/start', { method: 'POST', body: form });
+  if (!resp.ok) {
+    const txt = await resp.text();
+    alert('Error: ' + txt);
+    return;
+  }
+  const data = await resp.json();
+  const task_id = data.task_id;
+
+  document.getElementById('progressWrap').style.display = 'block';
+  const evtSource = new EventSource('/stream/' + task_id);
+
+  evtSource.addEventListener('progress', (e) => {
+    const pct = parseInt(e.data, 10);
+    const bar = document.getElementById('progressBar');
+    bar.style.width = pct + '%';
+    bar.textContent = pct + '%';
+  });
+
+  evtSource.addEventListener('done', (e) => {
+    evtSource.close();
+    const resultPath = e.data;
+    document.getElementById('resultImg').src = '/' + resultPath;
+    document.getElementById('resultWrap').style.display = 'block';
+    const bar = document.getElementById('progressBar');
+    bar.style.width = '100%';
+    bar.textContent = '100%';
+  });
+
+  evtSource.addEventListener('error', (e) => {
+    evtSource.close();
+    alert('Error during generation: ' + e.data);
+  });
+});
+</script>
+</body>
+</html>
