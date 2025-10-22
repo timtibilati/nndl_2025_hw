@@ -1,6 +1,6 @@
 # 🎨 Neural Style Transfer Web App (Flask + PyTorch)
 
-This is a simple **Flask web application** that allows users to upload a photo and transform it into the style of one of **seven famous artists** — **Van Gogh, Picasso, Dali, Munch, Klimt, Chagall,** or **Mucha** — using **Neural Style Transfer (NST)** with PyTorch.
+This is a simple **Flask web application** that allows users to upload a photo and transform it into the style of one of **seven famous artists** — **Van Gogh, Picasso, Dali, Munch, Klimt, Chagall,** or **Mucha** — using **Neural Style Transfer (NST)** with PyTorch (work is based on topic [Neural Transfer Using PyTorch](https://docs.pytorch.org/tutorials/advanced/neural_style_tutorial.html)).
 
 ---
 
